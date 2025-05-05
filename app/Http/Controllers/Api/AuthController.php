@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
@@ -46,20 +48,56 @@ class AuthController extends Controller
                  'email' => ['Sai email hoặc mật khẩu.'],
              ]);
          }
-
-         $token = $user->createToken('api_token')->plainTextToken;
-
+        // Tạo access token (hạn ngắn)
+         $token = $user->createToken('access_token');
+         $plain = $token->plainTextToken;
+         $token->accessToken->expires_at = Carbon::now()->addHour();
+         $token->accessToken->save();
+        // Tạo refresh token (dùng riêng để làm mới access token)
+         $refreshToken = $user->createToken('refresh_token')->plainTextToken;
          return response()->json([
-             'access_token' => $token,
+             'access_token' => $plain,
+             'refresh_token' => $refreshToken,
              'token_type' => 'Bearer',
          ]);
      }
+     // Làm mơi access token
+     public function refresh(Request $request)
+     {
+         $refreshToken = $request->bearerToken();
+
+         // Tìm token
+         $token = PersonalAccessToken::findToken($refreshToken);
+
+         if (! $token || $token->name !== 'refresh_token') {
+             return response()->json(['message' => 'Refresh token không hợp lệ'], 401);
+         }
+
+         $user = $token->tokenable;
+
+         // (Tuỳ chọn) Xoá token cũ để tránh reuse
+         $token->delete();
+         $user->tokens()->where('name', 'access_token')->delete();
+
+
+         // Tạo token mới
+         $newAccessToken = $user->createToken('access_token')->plainTextToken;
+         $newRefreshToken = $user->createToken('refresh_token')->plainTextToken;
+
+         return response()->json([
+             'access_token' => $newAccessToken,
+             'refresh_token' => $newRefreshToken,
+         ]);
+     }
+
 
      // Đăng xuất
      public function logout(Request $request)
      {
+        // Xoá token đang dùng (access token)
          $request->user()->currentAccessToken()->delete();
-
+          // (Nếu muốn chắc chắn) cũng xoá hết refresh token luôn:
+         $request->user()->tokens()->where('name', 'refresh_token')->delete();
          return response()->json(['message' => 'Đã đăng xuất.']);
      }
 
