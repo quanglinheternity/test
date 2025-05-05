@@ -81,11 +81,14 @@ class AuthController extends Controller
 
 
          // Tạo token mới
-         $newAccessToken = $user->createToken('access_token')->plainTextToken;
+         $newAccessToken = $user->createToken('access_token');
+         $plainNewTextToken = $newAccessToken->plainTextToken;
+         $newAccessToken->accessToken->expires_at = Carbon::now()->addHour();
+         $newAccessToken->accessToken->save();
          $newRefreshToken = $user->createToken('refresh_token')->plainTextToken;
 
          return response()->json([
-             'access_token' => $newAccessToken,
+             'access_token' => $plainNewTextToken,
              'refresh_token' => $newRefreshToken,
          ]);
      }
