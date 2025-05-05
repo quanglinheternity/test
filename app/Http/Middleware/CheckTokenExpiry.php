@@ -16,7 +16,7 @@ class CheckTokenExpiry
      */
     public function handle(Request $request, Closure $next): Response
     {
-        dd($request->headers->all());
+        // dd($request->headers->all());
         // dd($request->user()); // Xem người dùng có được xác thực không
 
         $token = $request->user()?->currentAccessToken();

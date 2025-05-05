@@ -14,5 +14,9 @@ Route::middleware(['auth:sanctum', 'check.token.expiry'])->group(function () {
     // Các route admin cần phải có quyền admin
     Route::middleware('is_admin')->group(function () {
         Route::get('/products', [ProductController::class, 'index']); // Quản lý sản phẩm chỉ dành cho admin
+        Route::get('products/{id}', [ProductController::class, 'show']);
+        Route::post('products', [ProductController::class, 'store']);
+        Route::put('products/{id}', [ProductController::class, 'update']);
+        Route::delete('products/{id}', [ProductController::class, 'destroy']);
     });
 });
